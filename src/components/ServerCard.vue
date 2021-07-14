@@ -27,12 +27,17 @@
         </q-item>
       </q-list>
     </q-card-section>
+    <q-dialog v-model="display" v-close-popup>
+      <q-card dark class="q-pa-md" style="width: 60%; min-width: 350px">
+        <q-input dark readonly v-model="displayErrorLink" :hint="$t('server-card.copy.error-hint')" />
+      </q-card>
+    </q-dialog>
   </q-card>
 </template>
 
 <script lang="ts">
 import { copyToClipboard, Notify } from 'quasar';
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 
 interface Link {
   name: string
@@ -52,6 +57,14 @@ export default defineComponent({
     dark: {
       type: Boolean,
       default: true
+    }
+  },
+  setup() {
+    const display = ref<boolean>(false);
+    const displayErrorLink = ref<string>('');
+    return {
+      display,
+      displayErrorLink
     }
   },
   computed: {
@@ -95,6 +108,8 @@ export default defineComponent({
           caption: this.$t('server-card.copy.success')
         })
       }).catch(() => {
+        this.displayErrorLink = link;
+        this.display = true;
         Notify.create({
           type: 'negative',
           message: this.$t('error'),

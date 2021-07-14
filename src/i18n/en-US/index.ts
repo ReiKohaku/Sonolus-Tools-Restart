@@ -24,7 +24,8 @@ export default {
     },
     copy: {
       success: 'Successfully copied server link to clipboard!',
-      error: 'Copy server link to clipboard failed, please copy it manually.'
+      error: 'Copy server link to clipboard failed, please copy it manually.',
+      'error-hint': 'Please copy the link above manually.'
     }
   },
   success: 'Success',
