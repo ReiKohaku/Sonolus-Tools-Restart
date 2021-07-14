@@ -59,7 +59,7 @@ export default defineComponent({
     },
     markdown(): string {
       const fileGetter: FileGetter = this.$store.getters['GithubData/file'] as FileGetter;
-      const path: string = this.$route.path.endsWith('/') ? '/README' : this.$route.path;
+      const path: string = this.$route.path.endsWith('/') ? (this.$route.path + 'README') : this.$route.path;
       const markdownFile: string | null = fileGetter(`${this.$i18n.locale}${path}.md`);
       if (markdownFile) {
         this.setTip(this.$i18n.locale);
