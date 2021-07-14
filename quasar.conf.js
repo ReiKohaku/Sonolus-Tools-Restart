@@ -92,6 +92,13 @@ module.exports = configure(function (ctx) {
           pathRewrite: {
             '^/github/codeload': ''
           }
+        },
+        '/github/archive': {
+          target: 'https://archive.fastgit.org',
+          changeOrigin: true,
+          pathRewrite: {
+            '^/github/archive': ''
+          }
         }
       }
     },
