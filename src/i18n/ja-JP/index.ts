@@ -12,7 +12,7 @@ export default {
     }
   },
   content: {
-    'translate-needed': 'このページの翻訳が欠けています。一部の内容は{locale}として表示されます。翻訳に協力したいなら、{warehouse}を訪問してください。',
+    'translate-needed': 'このページにまだ翻訳が欠けておりますので、一部の内容は{locale}と表示されることになります。ご協力いただく可能性があれば、{warehouse}にお尋ねください。',
     warehouse: 'Githubの倉庫'
   },
   'server-card': {
