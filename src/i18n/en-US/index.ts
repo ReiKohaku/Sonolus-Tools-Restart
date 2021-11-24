@@ -13,7 +13,7 @@ export default {
   },
   content: {
     'translate-needed': 'The translation of the page is missing and some content will be displayed in {locale}. If you want to help with translation, please visit the {warehouse}.',
-    warehouse: 'warehouse on GitHub'
+    warehouse: 'repository on GitHub'
   },
   'server-card': {
     default: {
