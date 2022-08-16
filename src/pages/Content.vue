@@ -82,6 +82,7 @@ export default defineComponent({
         }
       } catch (e) {
         // Do Nothing
+        console.error(e);
         await $router.push('/')
       } finally {
         loading.value = false;
