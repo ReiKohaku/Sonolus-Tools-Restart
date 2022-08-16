@@ -1,6 +1,6 @@
 interface LeftDrawerItemBase {
   type?: 'link' | 'dir'
-  name: string
+  name: string | Record<string, string>
 }
 
 export interface LeftDrawerItemLink extends LeftDrawerItemBase {

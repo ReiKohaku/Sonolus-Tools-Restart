@@ -75,8 +75,14 @@ module.exports = configure(function (ctx) {
 
       // https://v2.quasar.dev/quasar-cli/handling-webpack
       // "chain" is a webpack-chain object https://github.com/neutrinojs/webpack-chain
-      chainWebpack (/* chain */) {
+      // chainWebpack (/* chain */) {
         //
+      // },
+      extendWebpack (cfg) {
+        cfg.resolve.fallback = {
+          ...cfg.resolve.fallback,
+          buffer: require.resolve('buffer-browserify')
+        }
       }
     },
 
@@ -86,18 +92,11 @@ module.exports = configure(function (ctx) {
       port: 8080,
       open: true, // opens browser window automatically
       proxy: {
-        '/github/codeload': {
-          target: 'https://codeload.github.com',
+        '/github/raw': {
+          target: 'https://raw.githubusercontent.com',
           changeOrigin: true,
           pathRewrite: {
-            '^/github/codeload': ''
-          }
-        },
-        '/github/archive': {
-          target: 'https://archive.fastgit.org',
-          changeOrigin: true,
-          pathRewrite: {
-            '^/github/archive': ''
+            '^/github/raw': ''
           }
         }
       }
@@ -108,7 +107,7 @@ module.exports = configure(function (ctx) {
       config: {},
 
       // iconSet: 'material-icons', // Quasar icon set
-      // lang: 'en-US', // Quasar language pack
+      lang: 'en-US', // Quasar language pack
 
       // For special cases outside of where the auto-import strategy can have an impact
       // (like functional components as one of the examples),

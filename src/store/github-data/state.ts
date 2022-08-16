@@ -1,17 +1,25 @@
-export interface RepoTreeInterface<T> {
-  files: Record<string, T>
-  dir: Record<string, RepoTreeInterface<T>>
+export interface GithubContentStateInterface {
+  content: GithubContentDirInterface | null
+  cache: Record<string, ArrayBuffer>
+  defaultLang: string
 }
 
-export interface GithubDataStateInterface<T> {
-  files: null | RepoTreeInterface<T>
-  assets: null | RepoTreeInterface<string>
+export interface GithubContentFileInterface {
+  name: string
+  title: Record<string, string>
 }
 
-function state(): GithubDataStateInterface<string> {
+export interface GithubContentDirInterface {
+  title: Record<string, string>
+  files: GithubContentFileInterface[]
+  dir?: Record<string, GithubContentDirInterface>
+}
+
+function state(): GithubContentStateInterface {
   return {
-    files: null,
-    assets: null
+    content: null,
+    cache: {},
+    defaultLang: 'en-US'
   }
 };
 

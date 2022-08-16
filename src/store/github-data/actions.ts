@@ -1,58 +1,39 @@
 import { ActionTree } from 'vuex';
 import { StateInterface } from '../index';
-import { GithubDataStateInterface, RepoTreeInterface } from './state';
-import { getRepoZipBall } from 'src/lib/GithubRes';
-import { unZip } from 'src/lib/Utils';
-// import { api } from 'boot/axios';
+import { GithubContentDirInterface, GithubContentStateInterface } from './state';
+import { getRepoFile } from 'src/lib/GithubRes';
+import { ab2str } from 'src/lib/Utils';
 
-const actions: ActionTree<GithubDataStateInterface<string>, StateInterface> = {
-  async updateGithubData(context) {
-    const data: ArrayBuffer = await getRepoZipBall('ReiKohaku', 'Sonolus-Tools-Data', 'main')
-    /*
-    // These are test codes, please delete these before publish
-    const data: ArrayBuffer = (await api.get<ArrayBuffer>('/example.zip', {
-      responseType: 'arraybuffer'
-    })).data
-     */
-    const jszip = await unZip(data)
-    const tree: RepoTreeInterface<string> = {
-      files: {},
-      dir: {}
+const actions: ActionTree<GithubContentStateInterface, StateInterface> = {
+  async updateContent(context) {
+    const contentData: ArrayBuffer = await getRepoFile('ReiKohaku', 'Sonolus-Tools-Data', 'main', 'content.json');
+    const content: GithubContentDirInterface = JSON.parse(ab2str(contentData)) as GithubContentDirInterface;
+    context.commit('setFileTree', content);
+    return content;
+  },
+  async updateDefaultLang(context) {
+    try {
+      const contentData: ArrayBuffer = await getRepoFile('ReiKohaku', 'Sonolus-Tools-Data', 'main', '.defaultlang');
+      context.commit('setDefaultLang', { defaultLang: ab2str(contentData) });
+    } catch (e) {
+      context.commit('setDefaultLang', { defaultLang: 'en-US' });
     }
-    for (const p in jszip.files) {
-      const file = jszip.files[p]
-      const split = p.split('/')
-      async function addIntoTree(dir: RepoTreeInterface<string>, start: number) {
-        const name = split[start]
-        if (!name || name.length === 0) return
-        if (start >= split.length) return
-        else if (start === split.length - 1) {
-          if (/^(.*).(jpg|png|webp|ico|gif|mp4|ogg)$/.test(name)) {
-            const readFile = (data: Blob): Promise<string> => {
-              return new Promise<string>((resolve, reject) => {
-                const fileReader = new FileReader()
-                fileReader.readAsDataURL(data)
-                fileReader.onerror = reject
-                fileReader.onload = (ev: ProgressEvent<FileReader>) => {
-                  if (ev.target) resolve(ev.target.result as string)
-                  else reject()
-                }
-              })
-            }
-            dir.files[name] = await readFile(await file.async('blob'))
-          } else dir.files[name] = (await file.async('string')).toString()
-        }
-        else {
-          if (!dir.dir[name]) dir.dir[name] = {
-            files: {},
-            dir: {}
-          }
-          await addIntoTree(dir.dir[name], start + 1)
-        }
+  },
+  async updateFile(context, payload: { path: string, lang: string }) {
+    // 移除错误的斜杠、多余的斜杠、开头末尾的斜杠以保证路径正确
+    const path = payload.path.replace('\\', '/').replace(/\/+/, '/').replace(/^\//, '').replace(/\/$/, '');
+    if (context.state.cache[path]) return context.state.cache[path];
+    else {
+      try {
+        const fileData = await getRepoFile('ReiKohaku', 'Sonolus-Tools-Data', 'main', path);
+        context.commit('updateCache', { path, data: fileData });
+        return context.state.cache[path];
+      } catch (e) {
+        const fileData = await getRepoFile('ReiKohaku', 'Sonolus-Tools-Data', 'main', `${context.state.defaultLang}` + path.slice(path.indexOf('/')));
+        context.commit('updateCache', { path, data: fileData });
+        return context.state.cache[path];
       }
-      await addIntoTree(tree, 1)
     }
-    context.commit('setFileTree', tree)
   }
 };
 

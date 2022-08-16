@@ -6,7 +6,7 @@ import {
 } from 'vuex'
 
 import GithubData from './github-data'
-import { GithubDataStateInterface } from './github-data/state';
+import { GithubContentStateInterface } from './github-data/state';
 
 /*
  * If not building with SSR mode, you can
@@ -21,7 +21,7 @@ export interface StateInterface {
   // Define your own store structure, using submodules if needed
   // example: ExampleStateInterface;
   // Declared as unknown to avoid linting issue. Best to strongly type as per the line above.
-  GithubData: GithubDataStateInterface<string>
+  GithubData: GithubContentStateInterface
 }
 
 // provide typings for `this.$store`

@@ -7,12 +7,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, nextTick } from 'vue';
 import * as showdown from 'showdown';
 import hljs from 'highlight.js';
 import 'github-markdown-dracula-css/github-markdown-dracula.css';
 import 'highlight.js/styles/github-dark-dimmed.css';
-import { FileGetter } from 'src/store/github-data/getters';
 import { createMarkdownVueComponent } from 'src/lib/CreateMarkdownVueComponent';
 
 const converter: showdown.Converter = new showdown.Converter({
@@ -43,7 +42,6 @@ export default defineComponent({
   },
   computed: {
     html(): string {
-      const fileGetter: FileGetter = this.$store.getters['GithubData/file'] as FileGetter;
       return converter.makeHtml(this.markdown)
         .replace(/<a(.*?)href="#(.*?)"(.*?)>/g, (line: string) => {
           // 规范化文章内导航
@@ -55,11 +53,12 @@ export default defineComponent({
         .replace(/<img(.*?)src="(.*?)"(.*?)>/g, (line: string) => {
           // 重定向文章内的图片
           // 本来应该用redirectImages()方法，但是会报404，有点强迫症不想看
+          if (/<img(.*?)src="https?:\/\/(.*?)"(.*?)/.exec(line)) return line;
           const matches = /<img(.*?)src="(.*?)"(.*?)>/.exec(line);
           if (matches)
-            return `<img${matches[1]}src="${fileGetter(matches[2]) || matches[2]}"${matches[3]}>`;
+            return `<img${matches[1]}src="/github/raw/ReiKohaku/Sonolus-Tools-Data/main/${matches[2]}"${matches[3]}>`;
           return line;
-        })
+        });
     }
   },
   watch: {
@@ -72,12 +71,11 @@ export default defineComponent({
     redirectImages() {
       const el = this.$refs.md as HTMLElement;
       if (el) {
-        const fileGetter: FileGetter = this.$store.getters['GithubData/file'] as FileGetter;
         const blocks = el.querySelectorAll('img');
         blocks.forEach((block) => {
-          const matches = /https?:\/\/.*\/(assets\/.*\.(jpg|png|webp|ico|gif|mp4|ogg))/.exec(block.src)
+          const matches = new RegExp(`https?:\/\/${window.location.hostname}(:\\d+)?(/assets/.*.(jpg|png|webp|ico|gif|mp4|ogg))`).exec(block.src);
           if (matches)
-            block.src = fileGetter(matches[1]) || block.src;
+            block.src = ('/github/raw/ReiKohaku/Sonolus-Tools-Data/main/' + matches[2]) || block.src;
         });
       }
     },
@@ -92,75 +90,75 @@ export default defineComponent({
     },
     async renderVueComponent() {
       this.unmountAll();
-      await this.$nextTick(() => {
-        const el = this.$refs.md as HTMLElement;
-        if (el) {
-          const blocks = el.querySelectorAll('p');
-          const enabledComponents = [
-            'server-card'
-          ];
-          const nextTickFunc: (() => void)[] = [];
-          blocks.forEach((block) => {
-            const regexp = new RegExp(`^:::\s*(${enabledComponents.join('|')})`);
-            const blockMatches = regexp.exec(block.innerText);
-            if (blockMatches) {
-              const componentName = blockMatches[1];
-              const lines = block.innerText.split(/[\r\n]/).filter(i => i.length > 0);
-              const props: Record<string, unknown> = {};
-              let start = false;
-              for (const line of lines) {
-                if (!start && new RegExp(`^:::\s*(${enabledComponents.join('|')})$`).test(line))
-                  start = true;
-                else if (/^:::$/.test(line)) break;
-                else {
-                  const matches = /^(.*?):(.*)$/.exec(line);
-                  if (matches) {
-                    const propName = matches[1].replace(/^\s*(.*)\s*$/, '$1');
-                    matches[2] = matches[2].replace(/^\s*(.*)\s*$/, '$1');
-                    const propValue: unknown =
-                      (matches[2] === 'true') ? true :
-                        (matches[2] === 'false') ? false :
-                          (!isNaN(parseFloat(matches[2]))) ? parseFloat(matches[2]) :
-                            (/^[{\[](.*)[}\]]$/.test(matches[2])) ? JSON.parse(matches[2]) :
-                              matches[2];
-                    props[propName] = propValue;
-                  }
+      await nextTick();
+      const el = this.$refs.md as HTMLElement;
+      if (el) {
+        const blocks = el.querySelectorAll('p');
+        const enabledComponents = [
+          'server-card'
+        ];
+        const nextTickFunc: (() => void)[] = [];
+        blocks.forEach((block) => {
+          const regexp = new RegExp(`^:::\s*(${enabledComponents.join('|')})`);
+          const blockMatches = regexp.exec(block.innerText);
+          if (blockMatches) {
+            const componentName = blockMatches[1];
+            const lines = block.innerText.split(/[\r\n]/).filter(i => i.length > 0);
+            const props: Record<string, unknown> = {};
+            let start = false;
+            for (const line of lines) {
+              if (!start && new RegExp(`^:::\s*(${enabledComponents.join('|')})$`).test(line))
+                start = true;
+              else if (/^:::$/.test(line)) break;
+              else {
+                const matches = /^(.*?):(.*)$/.exec(line);
+                if (matches) {
+                  const propName = matches[1].replace(/^\s*(.*)\s*$/, '$1');
+                  matches[2] = matches[2].replace(/^\s*(.*)\s*$/, '$1');
+                  const propValue: unknown =
+                    (matches[2] === 'true') ? true :
+                      (matches[2] === 'false') ? false :
+                        (!isNaN(parseFloat(matches[2]))) ? parseFloat(matches[2]) :
+                          (/^[{\[](.*)[}\]]$/.test(matches[2])) ? JSON.parse(matches[2]) :
+                            matches[2];
+                  props[propName] = propValue;
                 }
               }
-              nextTickFunc.push(() => {
-                if (block.parentNode) {
-                  try {
-                    block.innerHTML = '';
-                    const comp = createMarkdownVueComponent(block, componentName, {
-                      title: 'A Play Server',
-                      caption: 'A Server of Sonolus',
-                      ...props
-                    });
-                    if (comp) {
-                      comp.mount();
-                      this.renderedComponents.push({ unmount: comp.unmount });
-                    }
-                  } catch (e) {
-                  }
-                }
-              });
             }
-          });
-          for (const f of nextTickFunc) f();
-          this.redirectImages();
-        }
-      })
+            nextTickFunc.push(() => {
+              if (block.parentNode) {
+                try {
+                  block.innerHTML = '';
+                  const comp = createMarkdownVueComponent(block, componentName, {
+                    title: 'A Play Server',
+                    caption: 'A Server of Sonolus',
+                    ...props
+                  });
+                  if (comp) {
+                    comp.mount();
+                    this.renderedComponents.push({ unmount: comp.unmount });
+                  }
+                } catch (e) {
+                }
+              }
+            });
+          }
+        });
+        for (const f of nextTickFunc) f();
+        this.redirectImages();
+      }
     },
     unmountAll() {
       this.renderedComponents.forEach(c => {
         c.unmount();
       });
-      this.renderedComponents = []
+      this.renderedComponents = [];
     }
   },
-  async mounted() {
-    await this.renderVueComponent();
-    this.highlightHtml();
+  mounted() {
+    this.renderVueComponent().then(() => {
+      this.highlightHtml()
+    }).catch(console.error);
   },
   beforeUnmount() {
     this.unmountAll();

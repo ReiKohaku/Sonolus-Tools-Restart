@@ -25,6 +25,7 @@ export async function updateQuasarLangPack(locale: string): Promise<void> {
 
 void updateQuasarLangPack(locale)
 const i18n = createI18n({
+  legacy: false,
   locale,
   messages
 });

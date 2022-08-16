@@ -50,14 +50,13 @@
 <script lang="ts">
 import EssentialLink from 'components/EssentialLink.vue';
 
-import { defineComponent, ref } from 'vue';
+import { computed, ComputedRef, defineComponent, onMounted, Ref, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { updateQuasarLangPack } from 'boot/i18n';
-import { LooseDictionary } from 'quasar/dist/types/ts-helpers';
-import { LeftDrawerItem, LeftDrawerItemDir, LeftDrawerItemLink } from 'src/components/models';
-import { RepoTreeInterface } from 'src/store/github-data/state';
-import { getMarkdownFirstLine } from 'src/lib/Utils';
+import { LeftDrawerItem } from 'src/components/models';
+import { GithubContentDirInterface } from 'src/store/github-data/state';
+import { useStore } from 'src/store';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -65,17 +64,10 @@ export default defineComponent({
     EssentialLink
   },
   setup() {
-    const leftDrawerOpen = ref(false);
+    const leftDrawerOpen: Ref<boolean> = ref(false);
     const $q = useQuasar();
     const $i18n = useI18n({ useScope: 'global' });
-
-    interface BottomSheetAction {
-      classes?: string | unknown[] | LooseDictionary
-      icon?: string
-      img?: string
-      avatar?: boolean
-      label?: string | number
-    }
+    const $store = useStore();
 
     const changeLang = () => {
       $q.bottomSheet({
@@ -94,7 +86,7 @@ export default defineComponent({
             img: 'img/flags/jp.svg'
           }
         ]
-      }).onOk((action: BottomSheetAction): void => {
+      }).onOk((action): void => {
         const localeList: Record<string, string> = {
           '简体中文': 'zh-CN',
           'English': 'en-US',
@@ -107,72 +99,61 @@ export default defineComponent({
       });
     };
     const loading = ref<boolean>(true);
+    const links = ref<LeftDrawerItem[]>([]);
+
+    const lang: ComputedRef<string> = computed(() => $i18n.locale.value as string);
+    const defaultLang: ComputedRef<string> = computed(() => $store.getters['GithubData/defaultLang'] as string);
+    watch($store.state.GithubData, () => {
+      if (!$store.state.GithubData.content) return [];
+      const list: LeftDrawerItem[] = [];
+      const content: GithubContentDirInterface = $store.state.GithubData.content;
+      function dfs(parent: LeftDrawerItem[], child: GithubContentDirInterface, path: string) {
+        child.files.forEach(f => {
+          parent.push({
+            type: 'link',
+            name: f.title,
+            link: path + (path.endsWith('/') ? '' : '/') + ((f.name.toLowerCase() === 'readme') ? '' : f.name)
+          });
+        });
+        if (child.dir) for (const i in child.dir) {
+          if (!child.dir[i]) continue;
+          const links: LeftDrawerItem[] = [];
+          dfs(links, child.dir[i], path + (path.endsWith('/') ? '' : '/') + i);
+          parent.push({
+            type: 'dir',
+            name: child.dir[i].title,
+            links
+          })
+        }
+      }
+      dfs(list, content, '/');
+      links.value = list;
+    });
+
+    onMounted(async () => {
+      loading.value = true;
+      try {
+        await $store.dispatch('GithubData/updateDefaultLang');
+        await $store.dispatch('GithubData/updateContent');
+      } catch (e) {
+        // Do nothing
+        console.error(e);
+      } finally {
+        loading.value = false;
+      }
+    })
+
     return {
       changeLang,
       leftDrawerOpen,
       toggleLeftDrawer() {
         leftDrawerOpen.value = !leftDrawerOpen.value;
       },
-      loading
+      loading,
+      links,
+      lang,
+      defaultLang
     };
-  },
-  computed: {
-    githubData(): RepoTreeInterface<string> | null {
-      return this.$store.state.GithubData.files;
-    },
-    defaultLang(): string {
-      return this.$store.getters['GithubData/defaultLang'] as string;
-    },
-    links: {
-      get(): LeftDrawerItem[] {
-        const list: LeftDrawerItem[] = [];
-        const githubData: RepoTreeInterface<string> | null = this.githubData;
-        if (githubData) {
-          function createLinksTree(path: string, name: string, node: RepoTreeInterface<string>): LeftDrawerItemDir {
-            path = path.endsWith('/') ? `${path}${name}` : `${path}/${name}`;
-            path = path.endsWith('/') ? path : `${path}/`;
-            const dir: LeftDrawerItemDir = {
-              type: 'dir',
-              name: node.files['.dirname'] || name,
-              links: []
-            };
-            for (const f in node.files) {
-              if (/^\.(.*)/.test(f)) continue;
-              else if (!/.md$/.test(f)) continue;
-              const name: string = getMarkdownFirstLine(node.files[f]);
-              const fileLink: LeftDrawerItemLink = {
-                name: name,
-                link: `${path}${f === 'README.md' ? '' : f}`.replace(/(.*)\.md$/, '$1')
-              };
-              dir.links.push(fileLink);
-            }
-            for (const d in node.dir) {
-              if (/^_/.test(d)) continue;
-              dir.links.push(createLinksTree(`${path}`, d, node.dir[d]));
-            }
-            return dir;
-          }
-
-          if (githubData.dir[this.defaultLang])
-            list.push(...createLinksTree('/', '', githubData.dir[this.defaultLang]).links);
-        }
-        return list;
-      },
-      set() {
-        // Do nothing
-      }
-    }
-  },
-  async mounted() {
-    this.loading = true;
-    try {
-      await this.$store.dispatch('GithubData/updateGithubData');
-    } catch (e) {
-      // Do nothing
-      console.error(e);
-    } finally {
-      this.loading = false;
-    }
   }
 });
 </script>
