@@ -56,7 +56,7 @@ export default defineComponent({
           if (/<img(.*?)src="https?:\/\/(.*?)"(.*?)/.exec(line)) return line;
           const matches = /<img(.*?)src="(.*?)"(.*?)>/.exec(line);
           if (matches)
-            return `<img${matches[1]}src="/github/raw/ReiKohaku/Sonolus-Tools-Data/main/${matches[2]}"${matches[3]}>`;
+            return `<img${matches[1]}src="/github/raw/ReiKohaku/Sonolus-Tools-Data/main${matches[2]}"${matches[3]}>`;
           return line;
         });
     }
@@ -75,7 +75,7 @@ export default defineComponent({
         blocks.forEach((block) => {
           const matches = new RegExp(`https?:\/\/${window.location.hostname}(:\\d+)?(/assets/.*.(jpg|png|webp|ico|gif|mp4|ogg))`).exec(block.src);
           if (matches)
-            block.src = ('/github/raw/ReiKohaku/Sonolus-Tools-Data/main/' + matches[2]) || block.src;
+            block.src = ('/github/raw/ReiKohaku/Sonolus-Tools-Data/main' + matches[2]) || block.src;
         });
       }
     },
