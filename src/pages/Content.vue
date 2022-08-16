@@ -69,16 +69,20 @@ export default defineComponent({
     watch($route, async () => {
       loading.value = true;
       try {
+        const routePath = $route.path;
         const path: string = $route.path.endsWith('/') ? ($route.path + 'README') : $route.path;
         const fullPath = `${$i18n.locale.value as string}${path}.md`;
         await $store.dispatch('GithubData/updateFile', { path: `${$i18n.locale.value as string}${path}.md` });
-        const markdownFile: ArrayBuffer = $store.state.GithubData.cache[fullPath];
-        if (markdownFile) {
-          setTip($i18n.locale.value as string);
-          markdown.value = ab2str(markdownFile);
-        } else {
-          setTip(defaultLang.value);
-          markdown.value = ab2str($store.state.GithubData.cache[`${defaultLang.value}${path}.md`]) || '';
+        // 为防止加载过程中用户切换页面而加载较慢所导致的最后显示结果错误的问题，加入此判断
+        if (routePath === $route.path) {
+          const markdownFile: ArrayBuffer = $store.state.GithubData.cache[fullPath];
+          if (markdownFile) {
+            setTip($i18n.locale.value as string);
+            markdown.value = ab2str(markdownFile);
+          } else {
+            setTip(defaultLang.value);
+            markdown.value = ab2str($store.state.GithubData.cache[`${defaultLang.value}${path}.md`]) || '';
+          }
         }
       } catch (e) {
         // Do Nothing
